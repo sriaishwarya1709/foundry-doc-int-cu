@@ -340,6 +340,43 @@ Both services run on the same Foundry resource. Choose one based on the workload
 
 Choose **Compare both** in the app to see the latency, field coverage and output style of each engine on the same file.
 
+### 9.1 Prebuilt Document Intelligence models in this app
+
+| Model | What it does | Key output | Typical use cases | Try with |
+|---|---|---|---|---|
+| `prebuilt-read` | **OCR only.** Reads printed and handwritten text in many languages and detects the language. No structure or fields. | Text lines and words with positions, languages | Digitizing scans, full-text search over archives, handwritten notes | [layout-report.pdf](samples/layout-report.pdf) |
+| `prebuilt-layout` | **OCR + document structure.** Detects paragraphs and their roles (title, section heading, header, footer), **tables** (including merged cells), selection marks (checkboxes) and figures. Returns **Markdown**. | Markdown, tables, paragraphs with roles, checkboxes | The foundation for RAG chunking, table extraction from reports, forms with checkboxes | [layout-report.pdf](samples/layout-report.pdf), [mixed-financial-docs.pdf](samples/mixed-financial-docs.pdf) |
+| `prebuilt-invoice` | **Invoice field extraction.** Layout plus about 30 typed invoice fields, including **line items**. Works across formats, languages and currencies. | `VendorName`, `CustomerName`, `InvoiceId`, `InvoiceDate`, `DueDate`, `SubTotal`, `TotalTax`, `InvoiceTotal`, `AmountDue`, addresses, `Items[]` (description, quantity, unit price, amount), each with a confidence score | Accounts payable automation, 3-way match, spend analytics | [invoice-contoso.pdf](samples/invoice-contoso.pdf), [invoice-sample.pdf](samples/invoice-sample.pdf) |
+| `prebuilt-receipt` | **Receipt field extraction** from photos or scans of sales receipts (retail, meals, hotels, fuel, parking). | `MerchantName`, `MerchantAddress`, `TransactionDate`/`Time`, `Items[]`, `Subtotal`, `TotalTax`, `Tip`, `Total` | Expense reporting, reimbursement, audit | [receipt-contoso.png](samples/receipt-contoso.png) |
+| `prebuilt-idDocument` | **Identity document extraction** from driver's licenses, passports (including the machine-readable zone), national ID cards and residence permits. | `FirstName`, `LastName`, `DocumentNumber`, `DateOfBirth`, `DateOfExpiration`, `Address`, `Sex`, `CountryRegion` | Customer onboarding / KYC, identity verification | [id-license.png](samples/id-license.png) |
+| `prebuilt-contract` | **Contract field extraction.** Finds the key agreement details. | `Title`, `ContractId`, `Parties[]`, `ExecutionDate`, `EffectiveDate`, `ExpirationDate`, `ContractDuration`, `RenewalDate`, `Jurisdictions[]` | Contract repositories, renewal tracking, legal review triage | [contract-property-management.pdf](samples/contract-property-management.pdf), [contract-purchase.pdf](samples/contract-purchase.pdf) |
+
+> Document Intelligence has more prebuilt models (tax forms such as W-2 and 1099, bank statements, pay stubs, health insurance cards, mortgage documents and others) and supports **custom models** trained on your own labeled documents. See [Document Intelligence models](https://learn.microsoft.com/azure/ai-services/document-intelligence/model-overview).
+
+### 9.2 Prebuilt Content Understanding analyzers in this app
+
+| Analyzer | What it does | Key output | Typical use cases | Models it uses | Try with |
+|---|---|---|---|---|---|
+| `prebuilt-documentSearch` | **RAG-optimized document analysis.** Extracts content with layout preserved (headings, tables, figures) as clean **Markdown**, and generates a one-paragraph **summary** of the document. | Markdown, `Summary`, pages, tables, figures | Building knowledge bases and chat over documents; quick triage of long reports and contracts | `gpt-4.1-mini` + `text-embedding-3-large` | [contract-property-management.pdf](samples/contract-property-management.pdf), [layout-report.pdf](samples/layout-report.pdf) |
+| `prebuilt-invoice` | **Generative invoice extraction.** Uses a predefined invoice schema, and the language model reads the document to fill it in, including line items. This makes it robust to unusual layouts. | Invoice fields (vendor, customer, dates, totals, tax, line items), each with confidence and grounding (where on the page it was found) | Accounts payable automation, including non-standard or mixed-format invoices | `gpt-4.1` + `text-embedding-3-large` | [invoice-contoso.pdf](samples/invoice-contoso.pdf) |
+| `prebuilt-receipt` | **Generative receipt extraction** using a predefined receipt schema. | Merchant, date, items, subtotal, tax, tip, total | Expense processing | `gpt-4.1` + `text-embedding-3-large` | [receipt-contoso.png](samples/receipt-contoso.png) |
+| `prebuilt-layout` | **Content extraction only (no generative model).** OCR plus layout and tables as Markdown, similar to Document Intelligence layout. | Markdown, tables, paragraphs | Low-cost structure extraction when you don't need a summary or fields | none (no LLM) | [mixed-financial-docs.pdf](samples/mixed-financial-docs.pdf) |
+
+> Content Understanding also offers analyzers for **images, audio and video** (`prebuilt-imageSearch`, `prebuilt-audioSearch`, `prebuilt-videoSearch`), more domain analyzers (ID documents, contracts, tax forms and others), and **custom analyzers**. A custom analyzer takes a field schema you describe in natural language, for example *"PaymentTerms: the number of days until payment is due"*, and needs no training data. See [Content Understanding prebuilt analyzers](https://learn.microsoft.com/azure/ai-services/content-understanding/concepts/prebuilt-analyzers).
+
+### 9.3 Which one should I pick?
+
+| Your document / goal | Recommended |
+|---|---|
+| Plain text from scans or handwriting | DI `prebuilt-read` |
+| Tables and structure for RAG chunking | DI `prebuilt-layout` or CU `prebuilt-layout` |
+| RAG plus a generated summary per document | CU `prebuilt-documentSearch` |
+| Standard invoices or receipts at high volume, predictable cost | DI `prebuilt-invoice` / `prebuilt-receipt` |
+| Invoices or receipts in many layouts, where generative accuracy matters more than cost | CU `prebuilt-invoice` / `prebuilt-receipt` |
+| IDs for onboarding / KYC | DI `prebuilt-idDocument` |
+| Key contract dates and parties | DI `prebuilt-contract` |
+| Your own fields (clauses, claim details, domain-specific data) | CU **custom analyzer** (schema only, no training) or DI **custom model** (trained on labeled samples) |
+
 ---
 
 ## 10. API reference
