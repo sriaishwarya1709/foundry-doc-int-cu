@@ -23,13 +23,16 @@ env:
   ENVIRONMENT_NAME: ${{ vars.ENVIRONMENT_NAME }}
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  DEPLOYMENT_NAME: docdemo-${{ github.run_number }}
+  # GitHub drops job outputs it suspects contain secrets, so each job reads the Bicep outputs from Azure.
+  LOAD_OUTPUTS: >-
+    az deployment group show -g "$AZURE_RESOURCE_GROUP" -n "$DEPLOYMENT_NAME" --query properties.outputs -o json
+    | jq -r 'to_entries[] | "\(.key)=\(.value.value)"' >> "$GITHUB_ENV"
 
 jobs:
   infra:
     name: Provision infrastructure (Bicep)
     runs-on: ubuntu-latest
-    outputs:
-      json: ${{ steps.deploy.outputs.json }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,13 +51,11 @@ jobs:
           DEPLOYER_PRINCIPAL_ID: ${{ vars.AZURE_SP_OBJECT_ID }}
           DEPLOYER_PRINCIPAL_TYPE: ServicePrincipal
         run: |
-          outputs=$(az deployment group create \
+          az deployment group create \
             -g "$AZURE_RESOURCE_GROUP" \
-            -n "docdemo-${{ github.run_number }}" \
+            -n "$DEPLOYMENT_NAME" \
             --parameters infra/main.bicepparam \
-            --query properties.outputs -o json | jq -c 'map_values(.value)')
-          echo "json=$outputs" >> "$GITHUB_OUTPUT"
-          echo "$outputs" | jq .
+            --query properties.outputs -o json | jq 'map_values(.value)'
 
   deploy-app:
     name: Deploy web app
@@ -69,9 +70,12 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Load deployment outputs
+        run: eval "$LOAD_OUTPUTS"
+
       - uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ fromJSON(needs.infra.outputs.json).WEB_APP_NAME }}
+          app-name: ${{ env.WEB_APP_NAME }}
           package: src
 
   bootstrap:
@@ -95,10 +99,8 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Export deployment outputs
-        env:
-          OUTPUTS: ${{ needs.infra.outputs.json }}
-        run: echo "$OUTPUTS" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+      - name: Load deployment outputs
+        run: eval "$LOAD_OUTPUTS"
 
       - name: Bootstrap (retries while new role assignments propagate)
         working-directory: src
@@ -114,22 +116,30 @@ jobs:
     needs: [infra, deploy-app, bootstrap]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Load deployment outputs
+        run: eval "$LOAD_OUTPUTS"
+
       - name: Health check
         run: |
-          url="${{ fromJSON(needs.infra.outputs.json).WEB_APP_URL }}"
+          url="$WEB_APP_URL"
           for i in $(seq 1 20); do
             curl -fsS "$url/healthz" && curl -fsS "$url/api/config" && break
             [ "$i" = "20" ] && exit 1
             sleep 15
           done
 
-      - uses: actions/checkout@v4
-        if: ${{ inputs.seed }}
-
       - name: Seed sample documents (both engines)
         if: ${{ inputs.seed }}
         run: |
-          url="${{ fromJSON(needs.infra.outputs.json).WEB_APP_URL }}"
+          url="$WEB_APP_URL"
           seed() {
             curl -fsS --max-time 600 -F "file=@samples/$1" -F engine=both -F di_model=$2 -F cu_analyzer=$3 \
               "$url/api/ingest" | jq -c '.results[] | {engine, model, chunks_indexed}'
