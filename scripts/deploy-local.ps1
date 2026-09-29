@@ -26,7 +26,7 @@ $outputs = az deployment group create -g $ResourceGroup -n "docdemo-local" --par
   --query properties.outputs -o json | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Bicep deployment failed' }
 
-$lines = $outputs.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value.value)" }
+$lines = $outputs.PSObject.Properties | ForEach-Object { "$($_.Name.ToUpper())=$($_.Value.value)" }
 [IO.File]::WriteAllLines((Join-Path $root '.env'), [string[]]$lines)
 Write-Host "==> Wrote .env" -ForegroundColor Cyan
 

@@ -25,9 +25,10 @@ env:
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   DEPLOYMENT_NAME: docdemo-${{ github.run_number }}
   # GitHub drops job outputs it suspects contain secrets, so each job reads the Bicep outputs from Azure.
+  # ARM lower-cases the first letter of output names, so upper-case them for Linux env vars.
   LOAD_OUTPUTS: >-
     az deployment group show -g "$AZURE_RESOURCE_GROUP" -n "$DEPLOYMENT_NAME" --query properties.outputs -o json
-    | jq -r 'to_entries[] | "\(.key)=\(.value.value)"' >> "$GITHUB_ENV"
+    | jq -r 'to_entries[] | "\(.key | ascii_upcase)=\(.value.value)"' >> "$GITHUB_ENV"
 
 jobs:
   infra:
