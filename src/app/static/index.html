@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Document Intelligence + Content Understanding + Foundry Agent</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Intelligent Document Processing <span>on Microsoft Foundry</span></h1>
+    <div class="flow">
+      <span>Upload</span><i>→</i><span>Blob Storage</span><i>→</i>
+      <span class="hl">Document Intelligence</span><em>|</em><span class="hl">Content Understanding</span><i>→</i>
+      <span>Foundry embeddings</span><i>→</i><span>Azure AI Search</span><i>→</i><span class="hl">Foundry Agent</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="col left">
+      <div class="card">
+        <h2>1 · Ingest &amp; extract</h2>
+        <form id="ingest-form">
+          <label class="drop" id="drop">
+            <input type="file" id="file" name="file" required />
+            <span id="file-label">Drop a PDF, image or Office file, or click to browse</span>
+          </label>
+
+          <fieldset>
+            <legend>Engine</legend>
+            <label><input type="radio" name="engine" value="both" checked /> Compare both</label>
+            <label><input type="radio" name="engine" value="document-intelligence" /> Document Intelligence</label>
+            <label><input type="radio" name="engine" value="content-understanding" /> Content Understanding</label>
+          </fieldset>
+
+          <label class="field">Document Intelligence model
+            <select id="di_model" name="di_model"></select>
+          </label>
+          <label class="field">Content Understanding analyzer
+            <select id="cu_analyzer" name="cu_analyzer"></select>
+          </label>
+          <button type="submit" id="ingest-btn">Process &amp; index</button>
+          <div id="ingest-status" class="status"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Document library <button class="link" id="refresh">↻</button></h2>
+        <ul id="docs" class="docs"></ul>
+      </div>
+    </section>
+
+    <section class="col center">
+      <div class="card grow">
+        <h2>2 · Extraction results <small id="result-title"></small></h2>
+        <div id="results" class="results"><p class="muted">Process a document or pick one from the library.</p></div>
+      </div>
+    </section>
+
+    <section class="col right">
+      <div class="card grow chat">
+        <h2>3 · Ask the Foundry agent <small id="agent-info"></small></h2>
+        <div id="messages" class="messages"></div>
+        <div class="suggestions">
+          <button>Summarize the documents I've uploaded.</button>
+          <button>What is the invoice total, due date and vendor?</button>
+          <button>List all line items in a table.</button>
+          <button>Compare what Document Intelligence and Content Understanding extracted.</button>
+        </div>
+        <form id="chat-form">
+          <input id="question" autocomplete="off" placeholder="Ask about your documents…" maxlength="4000" />
+          <button type="submit">Send</button>
+          <button type="button" id="new-chat" class="secondary" title="New conversation">＋</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
