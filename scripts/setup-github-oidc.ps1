@@ -27,9 +27,17 @@ if (-not $appId) { $appId = az ad app create --display-name $appName --query app
 $spId = az ad sp list --filter "appId eq '$appId'" --query '[0].id' -o tsv
 if (-not $spId) { $spId = az ad sp create --id $appId --query id -o tsv }
 
-$credName = "github-$Branch"
-if (-not (az ad app federated-credential list --id $appId --query "[?name=='$credName'].name" -o tsv)) {
-  $fic = @{ name = $credName; issuer = 'https://token.actions.githubusercontent.com'; subject = "repo:${Repo}:ref:refs/heads/$Branch"; audiences = @('api://AzureADTokenExchange') } | ConvertTo-Json -Compress
+$ownerName, $repoName = $Repo.Split('/')
+$ownerId = gh api "users/$ownerName" -q .id
+$repoId = gh api "repos/$Repo" -q .id
+$subjects = @{
+  "github-$Branch"     = "repo:${Repo}:ref:refs/heads/$Branch"
+  # Newer repos issue ID-qualified subjects.
+  "github-$Branch-ids" = "repo:$ownerName@$ownerId/$repoName@${repoId}:ref:refs/heads/$Branch"
+}
+foreach ($credName in $subjects.Keys) {
+  if (az ad app federated-credential list --id $appId --query "[?name=='$credName'].name" -o tsv) { continue }
+  $fic = @{ name = $credName; issuer = 'https://token.actions.githubusercontent.com'; subject = $subjects[$credName]; audiences = @('api://AzureADTokenExchange') } | ConvertTo-Json -Compress
   $tmp = New-TemporaryFile; Set-Content $tmp $fic
   az ad app federated-credential create --id $appId --parameters "@$tmp" -o none
   Remove-Item $tmp
