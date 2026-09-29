@@ -7,6 +7,17 @@ body { margin: 0; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; background:
 header { padding: 14px 22px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, #131826, #1a1430); }
 h1 { margin: 0 0 8px; font-size: 20px; }
 h1 span { color: var(--muted); font-weight: 400; }
+.title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+dialog { width: min(1200px, 95vw); max-height: 92vh; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+dialog::backdrop { background: rgba(0, 0, 0, .65); }
+.dialog-head { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 10px; }
+.dialog-head h2 { margin: 0; }
+.dialog-head #arch-close { margin-left: auto; font-size: 18px; }
+.tabs { display: flex; gap: 6px; }
+.tab { background: #1f2432; color: var(--text); font-size: 12px; padding: 6px 10px; }
+.tab.active { background: var(--accent); }
+.diagram { overflow: auto; max-height: 72vh; background: #0f121a; border-radius: 8px; padding: 12px; text-align: center; }
+.diagram svg { max-width: 100%; height: auto; }
 .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
 .flow span { padding: 3px 8px; border: 1px solid var(--line); border-radius: 12px; background: #1d2230; }
 .flow span.hl { border-color: var(--accent2); color: #d7c8ff; }

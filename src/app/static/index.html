@@ -7,10 +7,14 @@
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Intelligent Document Processing <span>on Microsoft Foundry</span></h1>
+    <div class="title-row">
+      <h1>Intelligent Document Processing <span>on Microsoft Foundry</span></h1>
+      <button id="arch-btn" class="secondary">🗺 Architecture</button>
+    </div>
     <div class="flow">
       <span>Upload</span><i>→</i><span>Blob Storage</span><i>→</i>
       <span class="hl">Document Intelligence</span><em>|</em><span class="hl">Content Understanding</span><i>→</i>
@@ -77,6 +81,20 @@
       </div>
     </section>
   </main>
+
+  <dialog id="arch-dialog">
+    <div class="dialog-head">
+      <h2>Solution architecture</h2>
+      <div class="tabs">
+        <button class="tab active" data-diagram="overview">Overview</button>
+        <button class="tab" data-diagram="ingestion">Ingestion flow</button>
+        <button class="tab" data-diagram="query">Query flow</button>
+      </div>
+      <button id="arch-close" class="link" title="Close">✕</button>
+    </div>
+    <div id="arch-diagram" class="diagram"></div>
+    <p id="arch-caption" class="muted"></p>
+  </dialog>
 
   <script src="/static/app.js"></script>
 </body>

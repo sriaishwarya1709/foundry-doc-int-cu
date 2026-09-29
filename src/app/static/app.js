@@ -175,3 +175,103 @@ $("#new-chat").addEventListener("click", () => { conversationId = null; $("#mess
 
 loadConfig().catch((e) => ($("#agent-info").textContent = e.message));
 loadDocs().catch(() => {});
+
+// ---------- architecture diagrams ----------
+const DIAGRAMS = {
+  overview: {
+    caption: "One Microsoft Foundry resource hosts Document Intelligence, Content Understanding, the models and the agent. Search and App Insights attach as project connections. All calls use managed identity (no keys).",
+    code: `flowchart LR
+  user([User]) -->|Browser| web
+  subgraph APP["Azure App Service · managed identity · VNet-integrated"]
+    web[Web UI + FastAPI]
+  end
+  subgraph FOUNDRY["Microsoft Foundry resource"]
+    di["Azure AI Document Intelligence<br/>layout · invoice · receipt · contract · ID"]
+    cu["Azure Content Understanding<br/>documentSearch · invoice · receipt"]
+    models["Model deployments<br/>gpt-4.1 · gpt-4.1-mini · text-embedding-3-large"]
+    subgraph PROJECT["Foundry project"]
+      agent["Foundry Agent: document-analyst<br/>+ Azure AI Search tool"]
+      conn1[["Connection: AI Search"]]
+      conn2[["Connection: App Insights"]]
+    end
+  end
+  blob[("Blob Storage<br/>documents/ · processed/<br/>private endpoint")]
+  search[("Azure AI Search<br/>hybrid + semantic index")]
+  appi[(Application Insights)]
+  web -- "1 store original" --> blob
+  web -- "2a analyze" --> di
+  web -- "2b analyze" --> cu
+  cu -. uses .-> models
+  web -- "3 save results" --> blob
+  web -- "4 embed chunks" --> models
+  web -- "5 index chunks" --> search
+  web -- "6 ask question" --> agent
+  agent --> conn1 --> search
+  search -. "query vectorizer" .-> models
+  agent -. uses .-> models
+  agent -. traces .-> conn2 --> appi`,
+  },
+  ingestion: {
+    caption: "Upload → store → extract with one or both engines in parallel → persist results → chunk, embed and index into Azure AI Search.",
+    code: `sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web App
+  participant B as Blob Storage
+  participant DI as Document Intelligence
+  participant CU as Content Understanding
+  participant E as Foundry embeddings
+  participant S as Azure AI Search
+  U->>W: Upload file + choose engine/model
+  W->>B: Save original (documents/{id}/file)
+  par Extract in parallel
+    W->>DI: analyze (e.g. prebuilt-invoice)
+    DI-->>W: Markdown, tables, fields + confidence
+  and
+    W->>CU: analyze (e.g. prebuilt-documentSearch)
+    CU-->>W: Markdown, summary, fields
+  end
+  W->>B: Save extraction JSON (processed/)
+  W->>W: Chunk Markdown + summary/fields chunks
+  W->>E: Embed chunks (text-embedding-3-large)
+  W->>S: Upload chunks + vectors (tagged by engine/model)
+  W-->>U: Side-by-side results`,
+  },
+  query: {
+    caption: "The Foundry agent calls the Azure AI Search tool (vector + semantic hybrid), grounds gpt-4.1 on the retrieved chunks and returns cited answers.",
+    code: `sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web App
+  participant A as Foundry Agent (Responses API)
+  participant S as Azure AI Search
+  participant M as gpt-4.1
+  U->>W: "What is the invoice total?"
+  W->>A: responses.create(agent_reference, conversation)
+  A->>S: Azure AI Search tool (hybrid + semantic)
+  S-->>A: Top chunks (title, url, content)
+  A->>M: Ground answer on retrieved chunks
+  M-->>A: Answer with citations
+  A-->>W: Answer + url_citation annotations
+  W-->>U: Rendered answer + links to source documents`,
+  },
+};
+
+let diagramSeq = 0;
+async function showDiagram(name) {
+  const box = $("#arch-diagram");
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.diagram === name));
+  $("#arch-caption").textContent = DIAGRAMS[name].caption;
+  if (!window.mermaid) {
+    box.replaceChildren(el("pre", { class: "md" }, DIAGRAMS[name].code));
+    return;
+  }
+  const { svg } = await mermaid.render(`arch-${++diagramSeq}`, DIAGRAMS[name].code);
+  box.innerHTML = svg;
+}
+
+if (window.mermaid) mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+$("#arch-btn").addEventListener("click", () => { $("#arch-dialog").showModal(); showDiagram("overview"); });
+$("#arch-close").addEventListener("click", () => $("#arch-dialog").close());
+$("#arch-dialog").addEventListener("click", (e) => { if (e.target.id === "arch-dialog") e.target.close(); });
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showDiagram(t.dataset.diagram)));
